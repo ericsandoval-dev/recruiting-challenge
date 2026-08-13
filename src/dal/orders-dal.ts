@@ -55,7 +55,14 @@ export const ordersDal = {
   sumAmountByMerchant(merchantId: string, from: string, to: string): number {
     const row = db
       .prepare(
-        `SELECT COALESCE(SUM(total_amount), 0) AS total
+        `SELECT COALESCE(SUM(
+                          CASE
+                            WHEN type = 'refund' THEN -total_amount
+                            ELSE total_amount
+                          END
+                        ), 
+                        0
+                        ) AS total
          FROM orders
          WHERE merchant_id = ? AND created_at >= ? AND created_at < ?`,
       )

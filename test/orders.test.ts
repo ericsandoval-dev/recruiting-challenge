@@ -58,3 +58,36 @@ test('orders DAL: a merchant cannot get an order from another merchant', () => {
 
   assert.equal(got, undefined);
 });
+
+test('revenue subtracts refunds', () => {
+  initSchema();
+
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_revenue', 'Revenue Test')`).run();
+
+  ordersDal.create({
+    id: 'sale1',
+    merchant_id: 'm_revenue',
+    customer_email: 'test@example.com',
+    total_amount: 10000,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  ordersDal.create({
+    id: 'refund1',
+    merchant_id: 'm_revenue',
+    customer_email: 'test@example.com',
+    total_amount: 2000,
+    type: 'refund',
+    status: 'completed',
+  });
+
+  const total = ordersDal.sumAmountByMerchant(
+    'm_revenue',
+    '2000-01-01',
+    '2100-01-01',
+  );
+
+  assert.equal(total, 8000);
+});
+
