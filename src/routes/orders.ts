@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
 import { randomUUID } from 'node:crypto';
+import { parseCreateOrderInput } from '../lib/order-input.js';
 
 export const ordersRouter = Router();
 
@@ -23,22 +24,20 @@ ordersRouter.get('/:id', (req, res) => {
 });
 
 ordersRouter.post('/', (req, res) => {
-  const body = req.body as {
-    customer_email?: string;
-    total_amount?: number;
-    type?: 'sale' | 'refund';
-  };
-  if (!body.customer_email || typeof body.total_amount !== 'number') {
+  const input = parseCreateOrderInput(req.body);
+  if (!input) {
     res.status(400).json({ error: 'invalid_body' });
     return;
   }
+
   const order = ordersDal.create({
     id: randomUUID(),
     merchant_id: req.merchantId!,
-    customer_email: body.customer_email,
-    total_amount: body.total_amount,
-    type: body.type ?? 'sale',
+    customer_email: input.customer_email,
+    total_amount: input.total_amount,
+    type: input.type,
     status: 'completed',
   });
+
   res.status(201).json({ order });
 });
