@@ -34,6 +34,27 @@ test('orders DAL: getById returns the order', () => {
     type: 'sale',
     status: 'completed',
   });
-  const got = ordersDal.getById('o2');
+  const got = ordersDal.getById('m_test', 'o2');
   assert.equal(got?.total_amount, 1200);
+});
+
+
+test('orders DAL: a merchant cannot get an order from another merchant', () => {
+  initSchema();
+
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_a', 'Merchant A')`).run();
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_b', 'Merchant B')`).run();
+
+  ordersDal.create({
+    id: 'o3',
+    merchant_id: 'm_b',
+    customer_email: 'test@example.com',
+    total_amount: 2000,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  const got = ordersDal.getById('m_a', 'o3');
+
+  assert.equal(got, undefined);
 });
