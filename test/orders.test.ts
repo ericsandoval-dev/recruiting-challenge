@@ -91,3 +91,68 @@ test('revenue subtracts refunds', () => {
   assert.equal(total, 8000);
 });
 
+test('top customers subtracts refunds from total spent', () => {
+  initSchema();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_top', 'Top Customers Test')`,
+  ).run();
+
+  ordersDal.create({
+    id: 'top-sale',
+    merchant_id: 'm_top',
+    customer_email: 'customer@example.com',
+    total_amount: 10000,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  ordersDal.create({
+    id: 'top-refund',
+    merchant_id: 'm_top',
+    customer_email: 'customer@example.com',
+    total_amount: 2000,
+    type: 'refund',
+    status: 'completed',
+  });
+
+  const customers = ordersDal.getTopCustomersByMerchant('m_top', 5);
+
+  assert.equal(customers.length, 1);
+  assert.equal(customers[0].order_count, 2);
+  assert.equal(customers[0].total_spent, 8000);
+});
+
+test('merchant summary returns order and customer metrics', () => {
+  initSchema();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_summary', 'Summary Test')`,
+  ).run();
+
+  ordersDal.create({
+    id: 'summary-1',
+    merchant_id: 'm_summary',
+    customer_email: 'one@example.com',
+    total_amount: 1000,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  ordersDal.create({
+    id: 'summary-2',
+    merchant_id: 'm_summary',
+    customer_email: 'two@example.com',
+    total_amount: 3000,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  const summary = ordersDal.getSummaryByMerchant('m_summary');
+
+  assert.equal(summary.total_orders, 2);
+  assert.equal(summary.unique_customers, 2);
+  assert.equal(summary.avg_order_value_cents, 2000);
+});
