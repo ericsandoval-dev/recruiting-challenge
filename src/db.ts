@@ -29,6 +29,19 @@ export function initSchema(): void {
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS webhook_deliveries (
+      id TEXT PRIMARY KEY,
+      subscription_id TEXT NOT NULL REFERENCES webhook_subscriptions(id),
+      event TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      next_attempt_at INTEGER NOT NULL,
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_next_attempt
+ON webhook_deliveries(next_attempt_at);
 
 CREATE INDEX IF NOT EXISTS idx_webhooks_merchant_event
 ON webhook_subscriptions(merchant_id, event);

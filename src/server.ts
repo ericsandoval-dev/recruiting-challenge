@@ -6,6 +6,7 @@ import { revenueRouter } from './routes/revenue.js';
 import { metricsRouter } from './routes/metrics.js';
 import { webhooksRouter } from './routes/webhooks.js';
 import { seedIfEmpty } from './scripts/seed.js';
+import { startWebhookDeliveryWorker } from './services/webhook-delivery.js';
 
 initSchema();
 seedIfEmpty();
@@ -25,11 +26,21 @@ app.use('/api/revenue', authMiddleware, revenueRouter);
 app.use('/api/metrics', authMiddleware, metricsRouter);
 app.use('/api/webhooks', authMiddleware, webhooksRouter);
 
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
-  res.status(500).json({ error: 'internal_error' });
-});
+app.use(
+  (
+    err: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    console.error(err);
+    res.status(500).json({ error: 'internal_error' });
+  },
+);
 
 app.listen(PORT, () => {
   console.log(`dashboard server listening on http://localhost:${PORT}`);
+
+  startWebhookDeliveryWorker();
+  console.log('webhook delivery worker started');
 });

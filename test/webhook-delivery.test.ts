@@ -7,7 +7,10 @@ import { createHmac } from 'node:crypto';
 
 import { initSchema, db } from '../src/db.js';
 import { webhooksDal } from '../src/dal/webhooks-dal.js';
-import { deliverWebhookEvent } from '../src/services/webhook-delivery.js';
+import {
+  deliverWebhookEvent,
+  processDueWebhookDeliveries,
+} from '../src/services/webhook-delivery.js';
 
 test('webhook delivery sends event, payload and valid HMAC signature', async () => {
   initSchema();
@@ -101,6 +104,115 @@ test('webhook delivery sends event, payload and valid HMAC signature', async () 
       receivedSignature,
       expectedSignature,
     );
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+});
+
+test('webhook delivery retries a persisted delivery and removes it after recovery', async () => {
+  initSchema();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_recovery', 'Recovery Test')`,
+  ).run();
+
+  let requestCount = 0;
+
+  const server = createServer((_req, res) => {
+    requestCount += 1;
+
+    if (requestCount === 1) {
+      res.writeHead(500);
+      res.end();
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+    });
+    res.end(JSON.stringify({ received: true }));
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, '127.0.0.1', resolve);
+  });
+
+  try {
+    const address = server.address();
+
+    if (!address || typeof address === 'string') {
+      throw new Error('Could not determine test server port');
+    }
+
+    webhooksDal.create({
+      id: 'recovery-subscription',
+      merchant_id: 'm_recovery',
+      url: `http://127.0.0.1:${address.port}/webhook`,
+      event: 'order.created',
+      secret: 'recovery-secret',
+    });
+
+    const order = {
+      id: 'recovery-order',
+      customer_email: 'recovery@example.com',
+      total_amount: 4200,
+      type: 'sale',
+      status: 'completed',
+      created_at: '2026-08-14 00:00:00',
+    };
+
+    // First attempt returns HTTP 500.
+    await deliverWebhookEvent(
+      'm_recovery',
+      'order.created',
+      order,
+    );
+
+    assert.equal(requestCount, 1);
+
+    const pendingAfterFailure = db
+      .prepare(
+        `SELECT *
+         FROM webhook_deliveries
+         WHERE subscription_id = ?`,
+      )
+      .get('recovery-subscription') as
+      | { attempt_count: number; last_error: string }
+      | undefined;
+
+    assert.ok(pendingAfterFailure);
+    assert.equal(pendingAfterFailure.attempt_count, 1);
+    assert.equal(pendingAfterFailure.last_error, 'HTTP 500');
+
+    // First retry uses a 100ms backoff.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 150);
+    });
+
+    // Simulate the worker checking due deliveries.
+    await processDueWebhookDeliveries();
+
+    assert.equal(requestCount, 2);
+
+    const pendingAfterRecovery = db
+      .prepare(
+        `SELECT *
+         FROM webhook_deliveries
+         WHERE subscription_id = ?`,
+      )
+      .get('recovery-subscription');
+
+    assert.equal(pendingAfterRecovery, undefined);
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {

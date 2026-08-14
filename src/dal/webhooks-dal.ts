@@ -36,6 +36,15 @@ export const webhooksDal = {
       .get(subscription.id) as WebhookSubscriptionRow;
   },
 
+  getById(id: string): WebhookSubscriptionRow | undefined {
+  return db
+    .prepare(
+      `SELECT * FROM webhook_subscriptions
+       WHERE id = ?`,
+    )
+    .get(id) as WebhookSubscriptionRow | undefined;
+},
+
   listActiveByMerchantAndEvent(
     merchantId: string,
     event: WebhookEvent,
