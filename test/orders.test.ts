@@ -156,3 +156,75 @@ test('merchant summary returns order and customer metrics', () => {
   assert.equal(summary.unique_customers, 2);
   assert.equal(summary.avg_order_value_cents, 2000);
 });
+
+
+test('orders DAL: updateStatus changes the order status', () => {
+  initSchema();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_status', 'Status Test')`,
+  ).run();
+
+  ordersDal.create({
+    id: 'status-order-1',
+    merchant_id: 'm_status',
+    customer_email: 'status@example.com',
+    total_amount: 1500,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  const updated = ordersDal.updateStatus(
+    'm_status',
+    'status-order-1',
+    'cancelled',
+  );
+
+  assert.equal(updated?.status, 'cancelled');
+
+  const stored = ordersDal.getById(
+    'm_status',
+    'status-order-1',
+  );
+
+  assert.equal(stored?.status, 'cancelled');
+});
+
+test('orders DAL: a merchant cannot update another merchant order', () => {
+  initSchema();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_status_a', 'Merchant A')`,
+  ).run();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_status_b', 'Merchant B')`,
+  ).run();
+
+  ordersDal.create({
+    id: 'status-order-2',
+    merchant_id: 'm_status_b',
+    customer_email: 'other@example.com',
+    total_amount: 2500,
+    type: 'sale',
+    status: 'completed',
+  });
+
+  const updated = ordersDal.updateStatus(
+    'm_status_a',
+    'status-order-2',
+    'cancelled',
+  );
+
+  assert.equal(updated, undefined);
+
+  const original = ordersDal.getById(
+    'm_status_b',
+    'status-order-2',
+  );
+
+  assert.equal(original?.status, 'completed');
+});
