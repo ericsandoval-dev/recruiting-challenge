@@ -61,6 +61,36 @@ function parseWebhookInput(body: unknown): {
   };
 }
 
+webhooksRouter.delete('/:id', (req, res) => {
+  const deactivated = webhooksDal.deactivate(
+    req.merchantId!,
+    req.params.id,
+  );
+
+  if (!deactivated) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+
+  res.status(204).send();
+});
+
+webhooksRouter.get('/', (req, res) => {
+  const subscriptions = webhooksDal.listByMerchant(
+    req.merchantId!,
+  );
+
+  const webhooks = subscriptions.map((subscription) => ({
+    id: subscription.id,
+    url: subscription.url,
+    event: subscription.event,
+    active: subscription.active === 1,
+    created_at: subscription.created_at,
+  }));
+
+  res.json({ webhooks });
+});
+
 webhooksRouter.post('/', (req, res) => {
   const input = parseWebhookInput(req.body);
 

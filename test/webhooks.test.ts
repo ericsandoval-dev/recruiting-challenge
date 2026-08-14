@@ -71,3 +71,65 @@ test('webhooks DAL: returns only subscriptions for the merchant and event', () =
   assert.equal(subscriptions.length, 1);
   assert.equal(subscriptions[0]!.id, 'wh_a_created');
 });
+
+test('webhooks DAL: merchant can deactivate its own subscription', () => {
+  initSchema();
+
+  db.prepare(
+    `INSERT OR IGNORE INTO merchants (id, name)
+     VALUES ('m_deactivate', 'Deactivate Test')`,
+  ).run();
+
+  webhooksDal.create({
+    id: 'wh_deactivate',
+    merchant_id: 'm_deactivate',
+    url: 'https://example.com/webhook',
+    event: 'order.created',
+    secret: 'deactivate-secret',
+  });
+
+  const result = webhooksDal.deactivate(
+    'm_deactivate',
+    'wh_deactivate',
+  );
+
+  assert.equal(result, true);
+
+  const subscription = webhooksDal.getById(
+    'wh_deactivate',
+  );
+
+  assert.equal(subscription?.active, 0);
+});
+
+test('webhooks DAL: merchant cannot deactivate another merchant subscription', () => {
+  initSchema();
+
+  db.prepare(`
+    INSERT OR IGNORE INTO merchants (id, name)
+    VALUES
+      ('m_owner', 'Owner Merchant'),
+      ('m_attacker', 'Other Merchant')
+  `).run();
+
+  webhooksDal.create({
+    id: 'wh_private',
+    merchant_id: 'm_owner',
+    url: 'https://example.com/private-webhook',
+    event: 'order.created',
+    secret: 'private-secret',
+  });
+
+  const result = webhooksDal.deactivate(
+    'm_attacker',
+    'wh_private',
+  );
+
+  assert.equal(result, false);
+
+  const subscription = webhooksDal.getById(
+    'wh_private',
+  );
+
+  assert.equal(subscription?.active, 1);
+});

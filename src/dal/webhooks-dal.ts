@@ -32,18 +32,52 @@ export const webhooksDal = {
     );
 
     return db
-      .prepare(`SELECT * FROM webhook_subscriptions WHERE id = ?`)
+      .prepare(
+        `SELECT * FROM webhook_subscriptions
+         WHERE id = ?`,
+      )
       .get(subscription.id) as WebhookSubscriptionRow;
   },
 
-  getById(id: string): WebhookSubscriptionRow | undefined {
-  return db
-    .prepare(
-      `SELECT * FROM webhook_subscriptions
-       WHERE id = ?`,
-    )
-    .get(id) as WebhookSubscriptionRow | undefined;
-},
+  listByMerchant(
+    merchantId: string,
+  ): WebhookSubscriptionRow[] {
+    return db
+      .prepare(
+        `SELECT * FROM webhook_subscriptions
+         WHERE merchant_id = ?
+         ORDER BY created_at DESC`,
+      )
+      .all(merchantId) as WebhookSubscriptionRow[];
+  },
+
+  deactivate(
+    merchantId: string,
+    id: string,
+  ): boolean {
+    const result = db
+      .prepare(
+        `UPDATE webhook_subscriptions
+         SET active = 0
+         WHERE merchant_id = ?
+           AND id = ?
+           AND active = 1`,
+      )
+      .run(merchantId, id);
+
+    return result.changes > 0;
+  },
+
+  getById(
+    id: string,
+  ): WebhookSubscriptionRow | undefined {
+    return db
+      .prepare(
+        `SELECT * FROM webhook_subscriptions
+         WHERE id = ?`,
+      )
+      .get(id) as WebhookSubscriptionRow | undefined;
+  },
 
   listActiveByMerchantAndEvent(
     merchantId: string,
@@ -56,6 +90,9 @@ export const webhooksDal = {
            AND event = ?
            AND active = 1`,
       )
-      .all(merchantId, event) as WebhookSubscriptionRow[];
+      .all(
+        merchantId,
+        event,
+      ) as WebhookSubscriptionRow[];
   },
 };

@@ -34,17 +34,13 @@ async function attemptWebhookDelivery(
   delivery: WebhookDeliveryRow,
 ): Promise<void> {
   const subscription = webhooksDal.getById(
-    delivery.subscription_id,
-  );
+  delivery.subscription_id,
+);
 
-  if (!subscription) {
-    console.error(
-      `Webhook subscription not found: ${delivery.subscription_id}`,
-    );
-
-    webhookDeliveriesDal.remove(delivery.id);
-    return;
-  }
+if (!subscription || subscription.active !== 1) {
+  webhookDeliveriesDal.remove(delivery.id);
+  return;
+}
 
   const signature = createHmac(
     'sha256',
