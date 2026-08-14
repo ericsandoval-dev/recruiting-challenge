@@ -42,4 +42,23 @@ I used AI on this decision log for the following limited purposes: Help understa
 - **Why this one and not the others:**  It was the feature that required the most architectural work and opened up the most avenues for us; the others were interesting, but didn't involve as many architectural decisions. I wanted to demonstrate my problem-solving skills and the analysis performed prior to implementation, as well as better showcase my technical judgment.
 - **What I cut to ship it in budget:** We excluded max retries, SSRF, and the configuration UI; based on our feature prioritization criteria, we decided to put them on hold for future improvements, as they were decisions that did not directly affect the feature's behavior or results during this initial phase.
 - **Confidence (1–10) that the shape I picked is the right one:** 8 
-- **What would change my mind:**
+- **What would change my mind:** requirements such as stress tests involving thousands of users, high security requirements, additional state-specific criteria, and specific routes.
+
+## Things I noticed but did NOT fix
+
+Issues such as date inconsistencies, timestamp formatting, merchant-ID security limitations, and stored XSS—which involved security, architectural, and correctness risks—were excluded based on time and impact considerations; I prioritized the issues with the greatest impact.
+
+## Docs / code I left alone deliberately
+
+- Regarding the frontend: on the backend, we had a "top customers" feature, but it wasn't being displayed anywhere. It did provide real value, yes, but it wasn't a priority issue. As for token-based or JWT authentication—was it necessary? Not strictly, since the existing documentation already covered the approach, but it was a significant area for improvement that fell outside the project scope.
+
+## What I'd do with another 6 hours
+
+-I would prioritize security as it's the weakest point, then webhooks and max retries, and finally the interface, including displaying top customers
+
+## Where I felt uncertain
+-Regarding webhook statuses: we are currently limiting ourselves to 3 states per order, but we don't know which payment statuses are actually handled.
+
+-Regarding the actual purpose or scope of the UI: what should or shouldn't be displayed—for instance, there is a "top customers" function, but it isn't currently being shown.
+
+-Regarding security layers: which ones would actually be useful—specifically, are there strict security requirements?
