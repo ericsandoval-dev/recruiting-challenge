@@ -12,6 +12,7 @@ import {
 
 type OrderPayload = {
   id: string;
+  merchant_id: string;
   customer_email: string;
   total_amount: number;
   type: string;
@@ -34,7 +35,7 @@ async function attemptWebhookDelivery(
   delivery: WebhookDeliveryRow,
 ): Promise<void> {
   const subscription = webhooksDal.getById(
-  delivery.subscription_id,
+    delivery.subscription_id,
 );
 
 if (!subscription || subscription.active !== 1) {

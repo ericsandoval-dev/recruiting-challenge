@@ -71,6 +71,7 @@ test('webhook delivery sends event, payload and valid HMAC signature', async () 
 
     const order = {
       id: 'delivery-order-1',
+      merchant_id: 'm_delivery',
       customer_email: 'delivery@example.com',
       total_amount: 5000,
       type: 'sale',
@@ -164,6 +165,7 @@ test('webhook delivery retries a persisted delivery and removes it after recover
 
     const order = {
       id: 'recovery-order',
+      merchant_id: 'm_recovery',
       customer_email: 'recovery@example.com',
       total_amount: 4200,
       type: 'sale',
@@ -266,6 +268,7 @@ test('webhook delivery removes pending delivery when subscription is deactivated
 
     const order = {
       id: 'deactivated-order',
+      merchant_id: 'm_deactivated_delivery',
       customer_email: 'deactivated@example.com',
       total_amount: 3500,
       type: 'sale',
