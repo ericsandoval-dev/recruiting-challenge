@@ -1,3 +1,4 @@
+import { parsePositiveIntegerQuery } from '../lib/query-input.js';
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
 import { randomUUID } from 'node:crypto';
@@ -7,18 +8,30 @@ import { deliverWebhookEvent } from '../services/webhook-delivery.js';
 export const ordersRouter = Router();
 
 ordersRouter.get('/', (req, res) => {
+  const limit = parsePositiveIntegerQuery(
+    req.query.limit,
+    100,
+  );
+
+  if (limit === null) {
+    res.status(400).json({ error: 'invalid_limit' });
+    return;
+  }
+
   const orders = ordersDal.listByMerchant(req.merchantId!, {
-    from: typeof req.query.from === 'string' ? req.query.from : undefined,
-    to: typeof req.query.to === 'string' ? req.query.to : undefined,
-    limit:
-      typeof req.query.limit === 'string'
-        ? Number(req.query.limit)
+    from:
+      typeof req.query.from === 'string'
+        ? req.query.from
         : undefined,
+    to:
+      typeof req.query.to === 'string'
+        ? req.query.to
+        : undefined,
+    limit,
   });
 
   res.json({ orders });
 });
-
 ordersRouter.get('/:id', (req, res) => {
   const order = ordersDal.getById(req.merchantId!, req.params.id);
 

@@ -1,3 +1,4 @@
+import { parsePositiveIntegerQuery } from '../lib/query-input.js';
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
 
@@ -20,7 +21,16 @@ metricsRouter.get('/summary', (req, res) => {
 
 metricsRouter.get('/top-customers', (req, res) => {
   const merchantId = req.merchantId!;
-  const limit = Number(req.query.limit ?? 5);
+
+  const limit = parsePositiveIntegerQuery(
+    req.query.limit,
+    5,
+  );
+
+  if (limit === null) {
+    res.status(400).json({ error: 'invalid_limit' });
+    return;
+  }
 
   const customers = ordersDal.getTopCustomersByMerchant(
     merchantId,
